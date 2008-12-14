@@ -3,7 +3,7 @@ GLIB_LIBS = $(shell pkg-config --libs glib-2.0)
 
 all: fk.o test
 
-fk.o: fk.c
+fk.o: fk.c fk.h
 	gcc -c -g -O0 $(GLIB_CFLAGS) $(GLIB_LIBS) fk.c
 
 test: test.c fk.o

@@ -11,6 +11,7 @@ int main(void)
 	xs = g_slist_prepend(xs, "C");
 	xs = g_slist_prepend(xs, "D");
 
+	puts("Adding A -> {B, C, D}");
 	fk_add_relation("A", xs);
 	g_slist_free(xs);
 
@@ -18,6 +19,7 @@ int main(void)
 	ys = g_slist_prepend(ys, "E");
 	ys = g_slist_prepend(ys, "F");
 
+	puts("Adding D -> {E, F}");
 	fk_add_relation("D", ys);
 	g_slist_free(ys);
 
