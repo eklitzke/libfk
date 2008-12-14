@@ -1,0 +1,2 @@
+This is a very simple C library for dealing with "foreign keys" (a term which I
+am using very loosely). It depends on glib.
