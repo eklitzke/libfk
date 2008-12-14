@@ -49,6 +49,8 @@ void fk_add_relation(const gchar *name, GSList *deps)
 		item->flags = 0;
 		item->rdeps = NULL;
 		g_hash_table_insert(FK_HASH, (gpointer) name, item);
+	} else {
+		item->flags &= ~FK_FLAG_INACTIVE;
 	}
 
 	/* For each dependency */
@@ -117,7 +119,6 @@ static void fk_delete_item(FKItem *item, GSList **list)
 	while (item->rdeps) {
 		FKItem *it = item->rdeps->data;
 		g_assert(it);
-		printf("Deleting %s\n", it->key);
 		if (FK_NOT_DELETED(it))
 			fk_delete_item(it, list);
 		item->rdeps = item->rdeps->next;
