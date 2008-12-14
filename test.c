@@ -1,11 +1,18 @@
 #include "fk.h"
+#include <stdio.h>
+
+static void destroy(const char *s)
+{
+	printf("DESTROY(\"%s\")\n", s);
+}
+
 
 int main(void)
 {
 	/* A -> B C D
 	 * D -> E F
 	 */
-	fk_initialize();
+	fk_initialize((FKDestroyCallback) destroy);
 	GSList *xs = NULL;
 	xs = g_slist_prepend(xs, "B");
 	xs = g_slist_prepend(xs, "C");

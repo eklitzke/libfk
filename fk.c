@@ -3,11 +3,12 @@
 #include <stdio.h>
 #include "fk.h"
 
-#define FK_NOT_DELETED(x) (!(x->flags & FK_FLAG_DELETED))
+#define FK_FLAG_INACTIVE 0x01
+#define FK_FLAG_DELETED  0x02
 
-#define FK_STR_CPY(s)   g_slice_copy(strlen(s) + 1, s)
-
-GHashTable *FK_HASH;
+/*********
+ * TYPES *
+ ********/
 
 typedef struct {
 	gconstpointer key;
@@ -15,13 +16,16 @@ typedef struct {
 	GSList *rdeps;
 } FKItem;
 
-static void FK_DESTROY(const gchar *s)
-{
-	printf("FK_DESTROY(\"%s\")\n", s);
-}
+/***********
+ * GLOBALS *
+ **********/
+
+GHashTable *FK_HASH;
+
+FKDestroyCallback FK_DESTROY_CALLBACK;
 
 /**********************
- * SETUP AND TEARDOWN
+ * SETUP AND TEARDOWN *
  *********************/
 
 /* Function to free a key. The key must be an ordinary null-terminated C
@@ -47,15 +51,24 @@ static void fk_free_val_func(FKItem *val)
 	g_slist_free(val->rdeps);
 }
 
-void fk_initialize()
+/* Initialize the library */
+void fk_initialize(FKDestroyCallback cb)
 {
 	g_assert(!FK_HASH);
+	g_assert(!FK_DESTROY_CALLBACK);
+	g_assert(cb);
+
+	FK_DESTROY_CALLBACK = cb;
 	FK_HASH = g_hash_table_new_full(
 			g_str_hash, g_str_equal, (GDestroyNotify) fk_free_key_func,
 			(GDestroyNotify) fk_free_val_func);
+
 	g_assert(FK_HASH);
+	g_assert(FK_DESTROY_CALLBACK);
 }
 
+/* Finalize (tear down) the library. After this function is called, all memory
+ * allocated by the library should be freed. */
 void fk_finalize()
 {
 	g_assert(FK_HASH);
@@ -63,15 +76,9 @@ void fk_finalize()
 	FK_HASH = NULL;
 }
 
-static gint fk_item_compare(const FKItem *a, const FKItem *b)
-{
-	if (a->key < b->key)
-		return -1;
-	else if (a->key == b->key)
-		return 0;
-	else
-		return 1;
-}
+/**********************
+ * RELATIONAL METHODS *
+ *********************/
 
 void fk_add_relation(const gchar *name, GSList *deps)
 {
@@ -129,10 +136,10 @@ void fk_inactivate(const gchar *name)
  * DELETION METHODS
  *********************/
 
-static void fk_delete_ht(FKItem *data, gpointer user_data)
+static void fk_delete_ht(FKItem *data, gpointer null_user_data)
 {
 	g_assert(data);
-	g_assert(!user_data);
+	g_assert(!null_user_data);
 	g_hash_table_remove(FK_HASH, data->key);
 }
 
@@ -148,7 +155,7 @@ static void fk_delete_item(FKItem *item, GSList **list)
 	/* if the item is not inactive, the destroy callback needs to be
 	 * called */
 	if (!(item->flags & FK_FLAG_INACTIVE))
-		FK_DESTROY(item->key);
+		FK_DESTROY_CALLBACK((const char *) item->key);
 	else
 		printf("not deleting %s, it is inactive\n", item->key);
 
@@ -156,7 +163,7 @@ static void fk_delete_item(FKItem *item, GSList **list)
 	while (item->rdeps) {
 		FKItem *it = item->rdeps->data;
 		g_assert(it);
-		if (FK_NOT_DELETED(it))
+		if (!(it->flags & FK_FLAG_DELETED))
 			fk_delete_item(it, list);
 		item->rdeps = item->rdeps->next;
 	}
@@ -176,3 +183,5 @@ void fk_delete(const gchar *name)
 		fprintf(stderr, "fk_delete: no item found for \"%s\"\n", name);
 	}
 }
+
+/* vim: noet */
