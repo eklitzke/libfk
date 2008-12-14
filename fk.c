@@ -1,17 +1,11 @@
 #include <glib.h>
 #include <stdio.h>
-
-#define FK_FLAG_INACTIVE 0x01
-#define FK_FLAG_DELETED  0x02
+#include "fk.h"
 
 #define FK_NOT_DELETED(x) (!(x->flags & FK_FLAG_DELETED))
 
+//GHashTAble *FK_HASH;
 GData *FK_DATA;
-
-void FK_DESTROY(const gchar *s)
-{
-	printf("FK_DESTROY(\"%s\")\n", s);
-}
 
 typedef struct {
 	GQuark key;
@@ -19,7 +13,12 @@ typedef struct {
 	GSList *rdeps;
 } FKItem;
 
-void fk_delete_item(FKItem *item, GSList **list);
+static void FK_DESTROY(const gchar *s)
+{
+	printf("FK_DESTROY(\"%s\")\n", s);
+}
+
+static void fk_delete_item(FKItem *item, GSList **list);
 
 void fk_initialize()
 {
@@ -30,6 +29,7 @@ void fk_initialize()
 static void fk_item_destroy(FKItem *item)
 {
 	/* TODO: invoke callback */
+	g_slist_free(item->rdeps);
 	g_slice_free(FKItem, item);
 }
 
@@ -115,7 +115,7 @@ void fk_delete(const gchar *name)
 	}
 }
 
-void fk_delete_item(FKItem *item, GSList **list)
+static void fk_delete_item(FKItem *item, GSList **list)
 {
 	g_assert(item);
 	g_assert(!(item->flags & FK_FLAG_DELETED));
@@ -139,34 +139,4 @@ void fk_delete_item(FKItem *item, GSList **list)
 			fk_delete_item(it, list);
 		item->rdeps = item->rdeps->next;
 	}
-}
-
-int main(void)
-{
-	/* A -> B C D
-	 * D -> E F
-	 */
-	fk_initialize();
-	GSList *xs = NULL;
-	xs = g_slist_prepend(xs, "B");
-	xs = g_slist_prepend(xs, "C");
-	xs = g_slist_prepend(xs, "D");
-
-	fk_add_relation("A", xs);
-
-	GSList *ys = NULL;
-	ys = g_slist_prepend(ys, "E");
-	ys = g_slist_prepend(ys, "F");
-
-	fk_add_relation("D", ys);
-
-	puts("calling fk_delete(\"F\")");
-	fk_delete("F");
-	puts("calling fk_delete(\"F\")");
-	fk_delete("F");
-
-	g_slist_free(xs);
-	g_slist_free(ys);
-	g_datalist_clear(&FK_DATA);
-	return 0;
 }
