@@ -28,5 +28,7 @@ int main(void)
 	puts("calling fk_delete(\"F\")");
 	fk_delete("F");
 
+	fk_finalize();
+
 	return 0;
 }

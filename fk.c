@@ -1,8 +1,11 @@
 #include <glib.h>
+#include <string.h>
 #include <stdio.h>
 #include "fk.h"
 
 #define FK_NOT_DELETED(x) (!(x->flags & FK_FLAG_DELETED))
+
+#define FK_STR_CPY(s)   g_slice_copy(strlen(s) + 1, s)
 
 GHashTable *FK_HASH;
 
@@ -17,17 +20,47 @@ static void FK_DESTROY(const gchar *s)
 	printf("FK_DESTROY(\"%s\")\n", s);
 }
 
-void fk_initialize()
+/**********************
+ * SETUP AND TEARDOWN
+ *********************/
+
+/* Function to free a key. The key must be an ordinary null-terminated C
+ * string. */
+static void fk_free_key_func(char *key)
 {
-	FK_HASH = g_hash_table_new(g_str_hash, g_str_equal);
+	g_assert(key);
+	g_slice_free1(strlen(key) + 1, key);
 }
 
-/* Destroy an item in the list */
-static void fk_item_destroy(FKItem *item)
+/* Function to free a value. */
+static void fk_free_val_func(FKItem *val)
 {
-	/* TODO: invoke callback */
-	g_slist_free(item->rdeps);
-	g_slice_free(FKItem, item);
+	g_assert(val);
+
+	/* N.B. We don't free the key. The key in the FKItem will be the same as
+	 * the key that is used in hash table, so it is the responsibility of
+	 * fk_free_key_func to free that data. */
+	g_slice_free(FKItem, val);
+
+	/* Just free the list; the actual elements in the list do not need to be
+	 * freed. */
+	g_slist_free(val->rdeps);
+}
+
+void fk_initialize()
+{
+	g_assert(!FK_HASH);
+	FK_HASH = g_hash_table_new_full(
+			g_str_hash, g_str_equal, (GDestroyNotify) fk_free_key_func,
+			(GDestroyNotify) fk_free_val_func);
+	g_assert(FK_HASH);
+}
+
+void fk_finalize()
+{
+	g_assert(FK_HASH);
+	g_hash_table_destroy(FK_HASH);
+	FK_HASH = NULL;
 }
 
 static gint fk_item_compare(const FKItem *a, const FKItem *b)
@@ -42,13 +75,15 @@ static gint fk_item_compare(const FKItem *a, const FKItem *b)
 
 void fk_add_relation(const gchar *name, GSList *deps)
 {
+	g_assert(name);
+
 	FKItem *item = g_hash_table_lookup(FK_HASH, name);
 	if (item == NULL) {
 		item = g_slice_alloc(sizeof(FKItem));
-		item->key = name;
+		item->key = g_slice_copy(strlen(name) + 1, name);
 		item->flags = 0;
 		item->rdeps = NULL;
-		g_hash_table_insert(FK_HASH, (gpointer) name, item);
+		g_hash_table_insert(FK_HASH, (gpointer) item->key, item);
 	} else {
 		item->flags &= ~FK_FLAG_INACTIVE;
 	}
@@ -56,13 +91,15 @@ void fk_add_relation(const gchar *name, GSList *deps)
 	/* For each dependency */
 	while (deps) {
 		const gchar *rdep_name = deps->data;
+		g_assert(rdep_name);
+
 		FKItem *dep_item = g_hash_table_lookup(FK_HASH, rdep_name);
 		if (!dep_item) {
 			dep_item = g_slice_alloc(sizeof(FKItem));
-			dep_item->key = rdep_name;
+			dep_item->key = g_slice_copy(strlen(rdep_name) + 1, rdep_name);
 			dep_item->flags = FK_FLAG_INACTIVE;
 			dep_item->rdeps = NULL;
-			g_hash_table_insert(FK_HASH, (gpointer) rdep_name, dep_item);
+			g_hash_table_insert(FK_HASH, (gpointer) dep_item->key, dep_item);
 		}
 
 		gboolean found_rdep = FALSE;
