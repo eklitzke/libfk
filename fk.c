@@ -19,7 +19,7 @@ typedef struct {
 	GSList *rdeps;
 } FKItem;
 
-void fk_delete_item(FKItem *item);
+void fk_delete_item(FKItem *item, GSList **list);
 
 void fk_initialize()
 {
@@ -27,9 +27,20 @@ void fk_initialize()
 }
 
 /* Destroy an item in the list */
-void fk_item_destroy(FKItem *item)
+static void fk_item_destroy(FKItem *item)
 {
+	/* TODO: invoke callback */
 	g_slice_free(FKItem, item);
+}
+
+static gint fk_item_compare(const FKItem *a, const FKItem *b)
+{
+	if (a->key < b->key)
+		return -1;
+	else if (a->key == b->key)
+		return 0;
+	else
+		return 1;
 }
 
 void fk_add_relation(const gchar *name, GSList *deps)
@@ -41,10 +52,10 @@ void fk_add_relation(const gchar *name, GSList *deps)
 		this->key = quark;
 		this->flags = 0;
 		this->rdeps = NULL;
-		g_datalist_id_set_data_full(&FK_DATA, quark, this, fk_item_destroy);
-	} else {
+		g_datalist_id_set_data_full(&FK_DATA, quark, this, (GDestroyNotify) fk_item_destroy);
+	}/* else {
 		this->flags &= ~FK_FLAG_INACTIVE;
-	}
+	}*/
 
 	while (deps) {
 		GQuark q = g_quark_from_string(deps->data);
@@ -57,11 +68,11 @@ void fk_add_relation(const gchar *name, GSList *deps)
 			item->key = q;
 			item->flags = FK_FLAG_INACTIVE;
 			item->rdeps = NULL;
-			g_datalist_id_set_data_full(&FK_DATA, q, item, fk_item_destroy);
+			g_datalist_id_set_data_full(&FK_DATA, q, item, (GDestroyNotify) fk_item_destroy);
 		}
 
 		/* note the rdep, if it isn't already stored */
-		if (g_slist_index(item->rdeps, this) == -1)
+		if (!g_slist_find_custom(item->rdeps, this, (GCompareFunc) fk_item_compare))
 			item->rdeps = g_slist_prepend(item->rdeps, this);
 
 		deps = deps->next;
@@ -79,23 +90,38 @@ void fk_inactivate(const gchar *name)
 	}
 }
 
+static void fk_delete_datalist(FKItem *data, gpointer user_data)
+{
+	g_assert(data);
+	g_assert(!user_data);
+	g_datalist_id_remove_data(&FK_DATA, data->key);
+}
+
 void fk_delete(const gchar *name)
 {
 	GQuark quark = g_quark_try_string(name);
 	if (quark) {
 		FKItem *item = g_datalist_id_get_data(&FK_DATA, quark);
-		fk_delete_item(item);
+		if (item) {
+			GSList *list = NULL;
+			fk_delete_item(item, &list);
+
+			/* Remove all of the nodes from the keyed data list */
+			g_slist_foreach(list, (GFunc) fk_delete_datalist, NULL);
+			g_slist_free(list);
+		}
 	} else {
 		fprintf(stderr, "fk_delete: no quark found for \"%s\"\n", name);
 	}
 }
 
-void fk_delete_item(FKItem *item)
+void fk_delete_item(FKItem *item, GSList **list)
 {
 	g_assert(item);
 	g_assert(!(item->flags & FK_FLAG_DELETED));
 
 	item->flags |= FK_FLAG_DELETED;
+	*list = g_slist_prepend(*list, item);
 
 	/* if the item is not inactive, the destroy callback needs to be
 	 * called */
@@ -109,9 +135,8 @@ void fk_delete_item(FKItem *item)
 	while (item->rdeps) {
 		FKItem *it = item->rdeps->data;
 		g_assert(it);
-		if (FK_NOT_DELETED(it)) {
-			fk_delete_item(it);
-		}
+		if (FK_NOT_DELETED(it))
+			fk_delete_item(it, list);
 		item->rdeps = item->rdeps->next;
 	}
 }
@@ -137,5 +162,11 @@ int main(void)
 
 	puts("calling fk_delete(\"F\")");
 	fk_delete("F");
+	puts("calling fk_delete(\"F\")");
+	fk_delete("F");
+
+	g_slist_free(xs);
+	g_slist_free(ys);
+	g_datalist_clear(&FK_DATA);
 	return 0;
 }
