@@ -72,8 +72,11 @@ void fk_initialize(FKDestroyCallback cb)
 void fk_finalize()
 {
 	g_assert(FK_HASH);
+	g_assert(FK_DESTROY_CALLBACK);
+
 	g_hash_table_destroy(FK_HASH);
 	FK_HASH = NULL;
+	FK_DESTROY_CALLBACK = NULL;
 }
 
 /**********************
