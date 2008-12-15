@@ -11,7 +11,8 @@ typedef void (*FKDestroyCallback) (const char *key);
 typedef struct {
 	gconstpointer key;
 	gint flags;
-	GSList *rdeps;
+	GList *fdeps;
+	GList *rdeps;
 } FKItem;
 
 void fk_initialize(FKDestroyCallback cb);

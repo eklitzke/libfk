@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include "fk.h"
 
+#define FK_IS_INACTIVE(x) (x & FK_FLAG_INACTIVE)
+
 /***********
  * GLOBALS *
  **********/
@@ -37,7 +39,8 @@ static void fk_free_val_func(FKItem *val)
 
 	/* Just free the list; the actual elements in the list do not need to be
 	 * freed. */
-	g_slist_free(val->rdeps);
+	g_list_free(val->rdeps);
+	g_list_free(val->fdeps);
 }
 
 /* Initialize the library */
@@ -77,11 +80,14 @@ void fk_add_relation(const gchar *name, GSList *deps)
 	g_assert(name);
 	printf("Adding relation %s\n", name);
 
+	gboolean is_new = FALSE;
 	FKItem *item = g_hash_table_lookup(FK_HASH, name);
 	if (item == NULL) {
+		is_new = TRUE;
 		item = g_slice_alloc(sizeof(FKItem));
 		item->key = g_slice_copy(strlen(name) + 1, name);
 		item->flags = 0;
+		item->fdeps = NULL;
 		item->rdeps = NULL;
 		//printf("inserting to ht %s\n", item->key);
 		g_hash_table_insert(FK_HASH, (gpointer) item->key, item);
@@ -99,22 +105,36 @@ void fk_add_relation(const gchar *name, GSList *deps)
 			dep_item = g_slice_alloc(sizeof(FKItem));
 			dep_item->key = g_slice_copy(strlen(rdep_name) + 1, rdep_name);
 			dep_item->flags = FK_FLAG_INACTIVE;
+			dep_item->fdeps = NULL;
 			dep_item->rdeps = NULL;
 			//printf("inserting to ht %s\n", dep_item->key);
 			g_hash_table_insert(FK_HASH, (gpointer) dep_item->key, dep_item);
 		}
 
-		gboolean found_rdep = FALSE;
-		GSList *list = dep_item->rdeps;
-		while (list) {
-			if (list->data == item) {
-				found_rdep = TRUE;
-				break;
+		GList *list;
+
+		/* The case of a new item is optimized specially */
+		if (is_new)
+			item->fdeps = g_list_prepend(item->fdeps, dep_item);
+		else {
+			list = item->fdeps;
+			while (list) {
+				if (list->data == dep_item)
+					break;
+				list = list->next;
 			}
+			if (!list)
+				item->fdeps = g_list_prepend(item->fdeps, dep_item);
+		}
+
+		list = dep_item->rdeps;
+		while (list) {
+			if (list->data == item)
+				break;
 			list = list->next;
 		}
-		if (!found_rdep)
-			dep_item->rdeps = g_slist_prepend(dep_item->rdeps, item);
+		if (!list)
+			dep_item->rdeps = g_list_prepend(dep_item->rdeps, item);
 
 		deps = deps->next;
 	}
@@ -132,38 +152,80 @@ void fk_inactivate(const gchar *name)
  * DELETION METHODS
  *********************/
 
-static void fk_delete_item(FKItem *item, GSList **list)
+static void fk_delete_forward(FKItem *item)
 {
+	g_assert(item);
+	printf("Trying to delete forward from %s\n", item->key);
+	while (item->fdeps) {
+
+		FKItem *it = item->fdeps->data;
+
+		GList *x = g_list_find(it->rdeps, (gconstpointer) item);
+		g_assert(x);
+		it->rdeps = g_list_delete_link(it->rdeps, x);
+		if (it->rdeps) {
+			FKItem *i = it->rdeps->data;
+			printf("it->rdeps head = %s\n", i->key);
+		}
+
+		if (it->flags & FK_FLAG_DELETED) {
+			printf("skipping forward delete of %s\n", it->key);
+			goto next_delete_forward;
+		}
+
+		if (!it->rdeps && FK_IS_INACTIVE(it->flags)) {
+			it->flags &= FK_FLAG_DELETED;
+			fk_delete_forward(it);
+			g_hash_table_remove(FK_HASH, it->key);
+		}
+
+next_delete_forward:
+		item->fdeps = item->fdeps->next;
+	}
+}
+
+static void fk_delete_item(FKItem *item)
+{
+	printf("fk_delete_item(\"%s\")\n", item->key);
 	g_assert(item);
 	g_assert(item->key);
 	g_assert(!(item->flags & FK_FLAG_DELETED));
 
 	item->flags |= FK_FLAG_DELETED;
-	*list = g_slist_prepend(*list, item);
 
 	/* call fk_delete on all reverse dependencies */
-	while (item->rdeps) {
-		FKItem *it = item->rdeps->data;
+
+	FKItem *it;
+
+	if (item->rdeps == NULL)
+		fk_delete_forward(item);
+
+	GList *rdep = item->rdeps;
+	while (rdep) {
+		it = rdep->data;
 		g_assert(it);
+		printf("handling %s in relation %s -> %s\n", it->key, item->key, it->key);
+		rdep = rdep->next;
 		if (!(it->flags & FK_FLAG_DELETED))
-			fk_delete_item(it, list);
-		item->rdeps = item->rdeps->next;
+			fk_delete_item(it);
 	}
 
 	if (!(item->flags & FK_FLAG_INACTIVE)) {
 		FK_DESTROY_CALLBACK((const char *) item->key);
 		g_hash_table_remove(FK_HASH, item->key);
-	}
-	else
+	} else if (!item->rdeps) {
+		g_hash_table_remove(FK_HASH, item->key);
+	} else {
+		printf("FIXME\n");
 		item->flags &= ~FK_FLAG_DELETED;
+	}
 }
 
 void fk_delete(const gchar *name)
 {
 	FKItem *item = g_hash_table_lookup(FK_HASH, name);
 	if (item) {
-		GSList *list = NULL;
-		fk_delete_item(item, &list);
+		fk_delete_item(item);
 	} else {
 		fprintf(stderr, "fk_delete: no item found for \"%s\"\n", name);
 	}

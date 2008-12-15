@@ -23,15 +23,15 @@ void test_one()
 
 	GHashTable *ht = fk_get_hash_table();
 	g_assert(g_hash_table_size(ht) == 2);
-	xs = g_hash_table_get_keys(ht);
-	g_assert(g_list_length(xs) == 2);
+	GList *ys = g_hash_table_get_keys(ht);
+	g_assert(g_list_length(ys) == 2);
 
-	/* The list xs should just contain B and C. If the first item is not B,
+	/* The list ys should just contain B and C. If the first item is not B,
 	 * reverse the list */
-	if (strcmp(g_list_first(xs)->data, "B"))
-		xs = g_list_reverse(xs);
+	if (strcmp(g_list_first(ys)->data, "B"))
+		ys = g_list_reverse(ys);
 
-	GList *fst = g_list_first(xs);
+	GList *fst = g_list_first(ys);
 	g_assert(strcmp(fst->data, "B") == 0);
 	FKItem *item = g_hash_table_lookup(ht, fst->data);
 	g_assert(item);
@@ -39,7 +39,7 @@ void test_one()
 	g_assert(item->rdeps == NULL);
 	g_assert(item->flags == 0);
 
-	GList *snd = g_list_last(xs);
+	GList *snd = g_list_last(ys);
 	g_assert(strcmp(snd->data, "C") == 0);
 	item = g_hash_table_lookup(ht, snd->data);
 	g_assert(item);
@@ -47,7 +47,7 @@ void test_one()
 	g_assert(item->rdeps);
 	g_assert(item->flags == FK_FLAG_INACTIVE);
 
-	g_list_free(xs);
+	g_list_free(ys);
 	fk_finalize();
 }
 
@@ -67,15 +67,15 @@ void test_two()
 
 	GHashTable *ht = fk_get_hash_table();
 	g_assert(g_hash_table_size(ht) == 2);
-	xs = g_hash_table_get_keys(ht);
-	g_assert(g_list_length(xs) == 2);
+	GList *ys = g_hash_table_get_keys(ht);
+	g_assert(g_list_length(ys) == 2);
 
-	/* The list xs should just contain A and C. If the first item is not A,
+	/* The list ys should just contain A and C. If the first item is not A,
 	 * reverse the list */
-	if (strcmp(g_list_first(xs)->data, "A"))
-		xs = g_list_reverse(xs);
+	if (strcmp(g_list_first(ys)->data, "A"))
+		ys = g_list_reverse(ys);
 
-	GList *fst = g_list_first(xs);
+	GList *fst = g_list_first(ys);
 	g_assert(strcmp(fst->data, "A") == 0);
 	FKItem *item = g_hash_table_lookup(ht, fst->data);
 	g_assert(item);
@@ -83,7 +83,7 @@ void test_two()
 	g_assert(item->rdeps == NULL);
 	g_assert(item->flags == 0);
 
-	GList *snd = g_list_last(xs);
+	GList *snd = g_list_last(ys);
 	g_assert(strcmp(snd->data, "C") == 0);
 	item = g_hash_table_lookup(ht, snd->data);
 	g_assert(item);
@@ -91,7 +91,7 @@ void test_two()
 	g_assert(item->rdeps);
 	g_assert(item->flags == FK_FLAG_INACTIVE);
 
-	g_list_free(xs);
+	g_list_free(ys);
 	fk_finalize();
 }
 
