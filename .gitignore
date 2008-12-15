@@ -1,4 +1,5 @@
 fk
 test
 *.o
+*.png
 .*.sw[op]

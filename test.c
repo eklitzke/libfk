@@ -1,9 +1,74 @@
 #include "fk.h"
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 void destroy(const char *s)
 {
 	printf("DESTROY(\"%s\")\n", s);
+}
+
+void make_graph_png(const char *fname)
+{
+
+	int pipefd[2];
+	if (pipe(pipefd) == -1) {
+		perror("pipe");
+		exit(EXIT_FAILURE);
+	}
+
+	pid_t cpid = fork();
+	if (cpid == -1) {
+		perror("fork");
+		exit(EXIT_FAILURE);
+	}
+	if (cpid == 0) {
+		close(pipefd[1]);
+		dup2(pipefd[0], 0);
+		execlp("dot", "dot", "-Tpng", "-o", fname, (char *) NULL);
+		perror("execlp");
+		exit(EXIT_FAILURE);
+	} else
+		close(pipefd[0]);
+
+	FILE *dot_file = fdopen(pipefd[1], "w");
+	if (!dot_file) {
+		perror("fdopen");
+		exit(EXIT_FAILURE);
+	}
+
+	fputs("digraph G {\n", dot_file);
+
+	GHashTable *ht = fk_get_hash_table();
+	GList *list = g_hash_table_get_values(ht);
+	GList *x = list;
+	while (x) {
+		FKItem *item = x->data;
+		if (item->flags & FK_FLAG_INACTIVE) {
+			fputc('\t', dot_file);
+			fputs(item->key, dot_file);
+			fputs(" [style=filled]\n", dot_file);
+		}
+		GList *y = item->fdeps;
+		while (y) {
+			FKItem *i = y->data;
+			fputc('\t', dot_file);
+			fputs(item->key, dot_file);
+			fputs(" -> ", dot_file);
+			fputs(i->key, dot_file);
+			fputc('\n', dot_file);
+			y = y->next;
+		}
+		x = x->next;
+	}
+	g_list_free(list);
+	fputs("}\n", dot_file);
+
+	fclose(dot_file);
+	//close(pipefd[0]);
+	printf("waiting\n");
+	wait(NULL);
 }
 
 void test_one()
@@ -19,6 +84,7 @@ void test_one()
 	fk_add_relation("A", xs);
 	fk_add_relation("B", xs);
 	fk_delete("A");
+	make_graph_png("one.png");
 	g_slist_free(xs);
 
 	GHashTable *ht = fk_get_hash_table();
@@ -63,6 +129,7 @@ void test_two()
 	fk_add_relation("A", xs);
 	fk_add_relation("B", xs);
 	fk_delete("B");
+	make_graph_png("two.png");
 	g_slist_free(xs);
 
 	GHashTable *ht = fk_get_hash_table();
@@ -109,7 +176,6 @@ void test_three()
 	g_slist_free(xs);
 
 	GHashTable *ht = fk_get_hash_table();
-	printf("ht size is %d\n", g_hash_table_size(ht));
 	g_assert(g_hash_table_size(ht) == 0);
 	fk_finalize();
 }

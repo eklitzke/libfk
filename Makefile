@@ -19,6 +19,6 @@ install: all
 	install -m 644 fk.o $(bindir)/fk.o
 
 clean:
-	-rm -f fk test *.o
+	-rm -f fk test *.o *.png
 
 .PHONY: all clean
