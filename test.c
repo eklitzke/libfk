@@ -278,6 +278,7 @@ void test_four()
 	xs = NULL;
 	xs = g_slist_prepend(xs, "F");
 	fk_add_relation("G", xs);
+	g_slist_free(xs);
 
 	fk_delete("F");
 	GHashTable *ht = fk_get_hash_table();
@@ -296,39 +297,5 @@ int main(void)
 	test_two();
 	test_three();
 	test_four();
-#if 0
-	/* A -> B C D
-	 * D -> E F
-	 */
-	fk_initialize((FKDestroyCallback) destroy);
-	GSList *xs = NULL;
-	xs = g_slist_prepend(xs, "B");
-	xs = g_slist_prepend(xs, "C");
-	xs = g_slist_prepend(xs, "D");
-
-	puts("Adding A -> {B, C, D}");
-	fk_add_relation("A", xs);
-	g_slist_free(xs);
-
-	GSList *ys = NULL;
-	ys = g_slist_prepend(ys, "E");
-	ys = g_slist_prepend(ys, "F");
-
-	puts("Adding D -> {E, F}");
-	fk_add_relation("D", ys);
-	g_slist_free(ys);
-
-	puts("calling fk_delete(\"F\")");
-	fk_delete("F");
-	//puts("calling fk_delete(\"F\")");
-	//fk_delete("F");
-
-
-	make_graph_png("test.png");
-
-	fk_finalize();
-
-	return 0;
-#endif
 	return 0;
 }
