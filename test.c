@@ -85,6 +85,9 @@ static void chti_helper(char *key, FKItem *value, gpointer user_data)
 	g_assert(value);
 	g_assert(!user_data);
 
+	/* This should be an identity test, not a structural test */
+	g_assert(key == value->key);
+
 	FKItem *item;
 	GList *xs;
 
@@ -92,6 +95,7 @@ static void chti_helper(char *key, FKItem *value, gpointer user_data)
 	GList *list = value->rdeps;
 	while (list) {
 		item = list->data;
+		printf("Checking rdeps of %s\n", item->key);
 		xs = item->fdeps;
 		while (xs) {
 			if (xs->data == value)
@@ -238,7 +242,6 @@ void test_three()
 	fk_add_relation("B", xs);
 	check_hash_table_integrity();
 	fk_delete("C");
-	check_hash_table_integrity();
 	g_slist_free(xs);
 	make_graph_png("three.png");
 
@@ -247,11 +250,47 @@ void test_three()
 	fk_finalize();
 }
 
+void test_four()
+{
+	puts("Running test_four...");
+	/* A -> B C D
+	 * D -> E F
+	 */
+	fk_initialize((FKDestroyCallback) destroy);
+	GSList *xs = NULL;
+	xs = g_slist_prepend(xs, "B");
+	xs = g_slist_prepend(xs, "C");
+	xs = g_slist_prepend(xs, "D");
+
+	fk_add_relation("A", xs);
+	check_hash_table_integrity();
+	g_slist_free(xs);
+
+	GSList *ys = NULL;
+	ys = g_slist_prepend(ys, "E");
+	ys = g_slist_prepend(ys, "F");
+
+	fk_add_relation("D", ys);
+	check_hash_table_integrity();
+	g_slist_free(ys);
+
+	fk_delete("F");
+	check_hash_table_integrity();
+	make_graph_png("four.png");
+	GHashTable *ht = fk_get_hash_table();
+	g_assert(g_hash_table_size(ht) == 0);
+	fk_delete("F");
+
+	fk_finalize();
+}
+
+
 int main(void)
 {
 	test_one();
 	test_two();
 	test_three();
+	test_four();
 #if 0
 	/* A -> B C D
 	 * D -> E F
@@ -286,4 +325,5 @@ int main(void)
 
 	return 0;
 #endif
+	return 0;
 }

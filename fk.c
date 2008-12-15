@@ -22,7 +22,7 @@ FKDestroyCallback FK_DESTROY_CALLBACK;
 static void fk_free_key_func(char *key)
 {
 	g_assert(key);
-	//printf("fk_free_key_func(%s)\n", key);
+	printf("fk_free_key_func(%s)\n", key);
 	g_slice_free1(strlen(key) + 1, key);
 }
 
@@ -30,7 +30,7 @@ static void fk_free_key_func(char *key)
 static void fk_free_val_func(FKItem *val)
 {
 	g_assert(val);
-	//printf("fk_free_key_val(%p)\n", val);
+	printf("fk_free_val_func(%p)\n", val);
 
 	/* N.B. We don't free the key. The key in the FKItem will be the same as
 	 * the key that is used in hash table, so it is the responsibility of
@@ -155,10 +155,12 @@ void fk_inactivate(const gchar *name)
 static void fk_delete_forward(FKItem *item)
 {
 	g_assert(item);
-	printf("Trying to delete forward from %s\n", item->key);
-	while (item->fdeps) {
+	GList *fdeps = item->fdeps;
+	printf("fk_delete_forward(\"%s\")\n", item->key);
+	while (fdeps) {
 
-		FKItem *it = item->fdeps->data;
+		FKItem *it = fdeps->data;
+		printf("Trying forward delete %s -> %s\n", item->key, it->key);
 
 		GList *x = g_list_find(it->rdeps, (gconstpointer) item);
 		g_assert(x);
@@ -169,9 +171,11 @@ static void fk_delete_forward(FKItem *item)
 		}
 
 		if (it->flags & FK_FLAG_DELETED) {
-			printf("skipping forward delete of %s\n", it->key);
+			printf("Skipping forward delete of %s (from %s); already deleted\n", it->key, item->key);
 			goto next_delete_forward;
 		}
+		printf("Not skipping forward delete of %s (from %s)\n", it->key, item->key);
+
 
 		if (!it->rdeps && FK_IS_INACTIVE(it->flags)) {
 			it->flags &= FK_FLAG_DELETED;
@@ -180,7 +184,7 @@ static void fk_delete_forward(FKItem *item)
 		}
 
 next_delete_forward:
-		item->fdeps = item->fdeps->next;
+		fdeps = fdeps->next;
 	}
 }
 
@@ -197,28 +201,28 @@ static void fk_delete_item(FKItem *item)
 
 	FKItem *it;
 
-	if (item->rdeps == NULL)
-		fk_delete_forward(item);
 
 	GList *rdep = item->rdeps;
 	while (rdep) {
 		it = rdep->data;
 		g_assert(it);
-		printf("handling %s in relation %s -> %s\n", it->key, item->key, it->key);
+		printf("Moving up in fk_delete_item to %s (rdep of %s)\n", it->key, item->key);
 		rdep = rdep->next;
 		if (!(it->flags & FK_FLAG_DELETED))
 			fk_delete_item(it);
 	}
 
+	/* Try deleting forward now */
+	if (item->rdeps == NULL)
+		fk_delete_forward(item);
+
 	if (!(item->flags & FK_FLAG_INACTIVE)) {
 		FK_DESTROY_CALLBACK((const char *) item->key);
 		g_hash_table_remove(FK_HASH, item->key);
-	} else if (!item->rdeps) {
+	} else if (!item->rdeps)
 		g_hash_table_remove(FK_HASH, item->key);
-	} else {
-		printf("FIXME\n");
-		item->flags &= ~FK_FLAG_DELETED;
-	}
+	else
+		g_assert_not_reached();
 }
 
 void fk_delete(const gchar *name)
