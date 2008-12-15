@@ -130,14 +130,6 @@ void fk_add_relation(const gchar *name, GSList *deps)
 	}
 }
 
-/* Mark an item as inactive, if it exists */
-void fk_inactivate(const gchar *name)
-{
-	FKItem *item = g_hash_table_lookup(FK_HASH, name);
-	if (item)
-		item->flags |= FK_FLAG_INACTIVE;
-}
-
 /**********************
  * DELETION METHODS
  *********************/
@@ -194,6 +186,7 @@ static void fk_delete_backward(FKItem *item)
 		fk_delete_forward(item);
 
 	if (!(item->flags & FK_FLAG_INACTIVE)) {
+		g_assert(FK_DESTROY_CALLBACK);
 		FK_DESTROY_CALLBACK((const char *) item->key);
 		g_hash_table_remove(FK_HASH, item->key);
 	} else if (!item->rdeps)
@@ -210,6 +203,20 @@ void fk_delete(const gchar *name)
 		g_assert(g_hash_table_lookup(FK_HASH, name) == NULL);
 	}
 }
+
+/* Mark an item as inactive, if it exists */
+void fk_inactivate(const gchar *name)
+{
+	FKItem *item = g_hash_table_lookup(FK_HASH, name);
+	if (item) {
+		item->flags |= FK_FLAG_INACTIVE;
+		if (!item->rdeps) {
+			fk_delete_forward(item);
+			g_hash_table_remove(FK_HASH, name);
+		}
+	}
+}
+
 
 #ifdef FK_UNIT_TEST
 /*********************

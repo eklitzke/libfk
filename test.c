@@ -298,14 +298,45 @@ void test_five()
 	fk_add_relation("A", NULL);
 	check_hash_table_integrity();
 	fk_inactivate("A");
-	check_hash_table_integrity();
 
 	GHashTable *ht = fk_get_hash_table();
-	FKItem *item = g_hash_table_lookup(ht, "A");
-	g_assert(item->flags == FK_FLAG_INACTIVE);
+	g_assert(!g_hash_table_size(ht));
+
+	fk_inactivate("A");
+	g_assert(!g_hash_table_size(ht));
+
+	fk_add_relation("C", NULL);
+	GSList *xs = NULL;
+	xs = g_slist_prepend(xs, "C");
+	fk_add_relation("B", xs);
+	g_slist_free(xs);
+
+	g_assert(((FKItem *) g_hash_table_lookup(ht, "C"))->flags == 0);
+	g_assert(((FKItem *) g_hash_table_lookup(ht, "B"))->flags == 0);
+	fk_inactivate("C");
+	g_assert(((FKItem *) g_hash_table_lookup(ht, "B"))->flags == 0);
+	g_assert(((FKItem *) g_hash_table_lookup(ht, "C"))->flags == FK_FLAG_INACTIVE);
+
 	fk_finalize();
 }
 
+void test_six()
+{
+	/* Test fk_inactivate does delete_forward */
+	puts("Running test_six...");
+	fk_initialize(NULL);
+
+	GSList *xs = NULL;
+	xs = g_slist_prepend(xs, "B");
+	fk_add_relation("A", xs);
+	g_slist_free(xs);
+	check_hash_table_integrity();
+	fk_inactivate("A");
+	GHashTable *ht = fk_get_hash_table();
+	g_assert(!g_hash_table_size(ht));
+
+	fk_finalize();
+}
 
 int main(void)
 {
@@ -314,5 +345,6 @@ int main(void)
 	test_three();
 	test_four();
 	test_five();
+	test_six();
 	return 0;
 }
