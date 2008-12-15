@@ -20,6 +20,7 @@ FKDestroyCallback FK_DESTROY_CALLBACK;
 static void fk_free_key_func(char *key)
 {
 	g_assert(key);
+	//printf("fk_free_key_func(%s)\n", key);
 	g_slice_free1(strlen(key) + 1, key);
 }
 
@@ -27,6 +28,7 @@ static void fk_free_key_func(char *key)
 static void fk_free_val_func(FKItem *val)
 {
 	g_assert(val);
+	//printf("fk_free_key_val(%p)\n", val);
 
 	/* N.B. We don't free the key. The key in the FKItem will be the same as
 	 * the key that is used in hash table, so it is the responsibility of
@@ -61,7 +63,7 @@ void fk_finalize()
 	g_assert(FK_HASH);
 	g_assert(FK_DESTROY_CALLBACK);
 
-	g_hash_table_destroy(FK_HASH);
+	g_hash_table_unref(FK_HASH);
 	FK_HASH = NULL;
 	FK_DESTROY_CALLBACK = NULL;
 }
@@ -81,6 +83,7 @@ void fk_add_relation(const gchar *name, GSList *deps)
 		item->key = g_slice_copy(strlen(name) + 1, name);
 		item->flags = 0;
 		item->rdeps = NULL;
+		//printf("inserting to ht %s\n", item->key);
 		g_hash_table_insert(FK_HASH, (gpointer) item->key, item);
 	} else {
 		item->flags &= ~FK_FLAG_INACTIVE;
@@ -97,6 +100,7 @@ void fk_add_relation(const gchar *name, GSList *deps)
 			dep_item->key = g_slice_copy(strlen(rdep_name) + 1, rdep_name);
 			dep_item->flags = FK_FLAG_INACTIVE;
 			dep_item->rdeps = NULL;
+			//printf("inserting to ht %s\n", dep_item->key);
 			g_hash_table_insert(FK_HASH, (gpointer) dep_item->key, dep_item);
 		}
 
@@ -128,13 +132,6 @@ void fk_inactivate(const gchar *name)
  * DELETION METHODS
  *********************/
 
-static void fk_delete_ht(FKItem *data, gpointer null_user_data)
-{
-	g_assert(data);
-	g_assert(!null_user_data);
-	g_hash_table_remove(FK_HASH, data->key);
-}
-
 static void fk_delete_item(FKItem *item, GSList **list)
 {
 	g_assert(item);
@@ -144,13 +141,6 @@ static void fk_delete_item(FKItem *item, GSList **list)
 	item->flags |= FK_FLAG_DELETED;
 	*list = g_slist_prepend(*list, item);
 
-	/* if the item is not inactive, the destroy callback needs to be
-	 * called */
-	if (!(item->flags & FK_FLAG_INACTIVE))
-		FK_DESTROY_CALLBACK((const char *) item->key);
-	else
-		printf("not deleting %s, it is inactive\n", item->key);
-
 	/* call fk_delete on all reverse dependencies */
 	while (item->rdeps) {
 		FKItem *it = item->rdeps->data;
@@ -159,6 +149,13 @@ static void fk_delete_item(FKItem *item, GSList **list)
 			fk_delete_item(it, list);
 		item->rdeps = item->rdeps->next;
 	}
+
+	if (!(item->flags & FK_FLAG_INACTIVE)) {
+		FK_DESTROY_CALLBACK((const char *) item->key);
+		g_hash_table_remove(FK_HASH, item->key);
+	}
+	else
+		item->flags &= ~FK_FLAG_DELETED;
 }
 
 void fk_delete(const gchar *name)
@@ -167,10 +164,6 @@ void fk_delete(const gchar *name)
 	if (item) {
 		GSList *list = NULL;
 		fk_delete_item(item, &list);
-
-		/* Remove all of the nodes from the keyed data list */
-		g_slist_foreach(list, (GFunc) fk_delete_ht, NULL);
-		g_slist_free(list);
 	} else {
 		fprintf(stderr, "fk_delete: no item found for \"%s\"\n", name);
 	}

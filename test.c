@@ -22,6 +22,7 @@ void test_one()
 	g_slist_free(xs);
 
 	GHashTable *ht = fk_get_hash_table();
+	g_assert(g_hash_table_size(ht) == 2);
 	xs = g_hash_table_get_keys(ht);
 	g_assert(g_list_length(xs) == 2);
 
@@ -52,20 +53,21 @@ void test_one()
 
 void test_two()
 {
-	puts("Running test_one...");
+	puts("Running test_two...");
 	/* This is the same as test_one, but B is deleted rather than A */
 
 	fk_initialize((FKDestroyCallback) destroy);
 
-	GSList *xs = g_slist_prepend(xs, "C");
+	GSList *xs = NULL;
+	xs = g_slist_prepend(xs, "C");
 	fk_add_relation("A", xs);
 	fk_add_relation("B", xs);
 	fk_delete("B");
 	g_slist_free(xs);
 
 	GHashTable *ht = fk_get_hash_table();
+	g_assert(g_hash_table_size(ht) == 2);
 	xs = g_hash_table_get_keys(ht);
-	printf("key list is %d long\n", g_list_length(xs));
 	g_assert(g_list_length(xs) == 2);
 
 	/* The list xs should just contain A and C. If the first item is not A,
@@ -93,10 +95,31 @@ void test_two()
 	fk_finalize();
 }
 
+void test_three()
+{
+	puts("Running test_three...");
+
+	fk_initialize((FKDestroyCallback) destroy);
+
+	GSList *xs = NULL;
+	xs = g_slist_prepend(xs, "C");
+	fk_add_relation("A", xs);
+	fk_add_relation("B", xs);
+	fk_delete("C");
+	g_slist_free(xs);
+
+	GHashTable *ht = fk_get_hash_table();
+	printf("ht size is %d\n", g_hash_table_size(ht));
+	g_assert(g_hash_table_size(ht) == 0);
+	fk_finalize();
+}
+
 int main(void)
 {
 	test_one();
 	test_two();
+	test_three();
+#if 0
 	/* A -> B C D
 	 * D -> E F
 	 */
@@ -124,6 +147,7 @@ int main(void)
 	fk_delete("F");
 
 	fk_finalize();
+#endif
 
 	return 0;
 }

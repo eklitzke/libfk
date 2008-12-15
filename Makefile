@@ -18,6 +18,6 @@ install: all
 	install -m 644 fk.o $(bindir)/fk.o
 
 clean:
-	-rm -f fk *.o
+	-rm -f fk test *.o
 
 .PHONY: all clean
