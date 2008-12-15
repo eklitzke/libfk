@@ -22,7 +22,7 @@ FKDestroyCallback FK_DESTROY_CALLBACK;
 static void fk_free_key_func(char *key)
 {
 	g_assert(key);
-	printf("fk_free_key_func(%s)\n", key);
+	//printf("fk_free_key_func(%s)\n", key);
 	g_slice_free1(strlen(key) + 1, key);
 }
 
@@ -30,7 +30,7 @@ static void fk_free_key_func(char *key)
 static void fk_free_val_func(FKItem *val)
 {
 	g_assert(val);
-	printf("fk_free_val_func(%p)\n", val);
+	//printf("fk_free_val_func(%p)\n", val);
 
 	/* N.B. We don't free the key. The key in the FKItem will be the same as
 	 * the key that is used in hash table, so it is the responsibility of

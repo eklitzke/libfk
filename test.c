@@ -255,30 +255,35 @@ void test_four()
 	puts("Running test_four...");
 	/* A -> B C D
 	 * D -> E F
+	 * G -> F
+	 *
+	 * Then delete F
 	 */
 	fk_initialize((FKDestroyCallback) destroy);
 	GSList *xs = NULL;
 	xs = g_slist_prepend(xs, "B");
 	xs = g_slist_prepend(xs, "C");
 	xs = g_slist_prepend(xs, "D");
-
 	fk_add_relation("A", xs);
-	check_hash_table_integrity();
 	g_slist_free(xs);
-
-	GSList *ys = NULL;
-	ys = g_slist_prepend(ys, "E");
-	ys = g_slist_prepend(ys, "F");
-
-	fk_add_relation("D", ys);
 	check_hash_table_integrity();
-	g_slist_free(ys);
+
+	xs = NULL;
+	xs = g_slist_prepend(xs, "E");
+	xs = g_slist_prepend(xs, "F");
+	fk_add_relation("D", xs);
+	g_slist_free(xs);
+	check_hash_table_integrity();
+
+	xs = NULL;
+	xs = g_slist_prepend(xs, "F");
+	fk_add_relation("G", xs);
 
 	fk_delete("F");
-	check_hash_table_integrity();
-	make_graph_png("four.png");
 	GHashTable *ht = fk_get_hash_table();
 	g_assert(g_hash_table_size(ht) == 0);
+
+	/* Try deleting again, just to make sure nothing crashes */
 	fk_delete("F");
 
 	fk_finalize();
