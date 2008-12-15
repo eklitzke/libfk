@@ -50,14 +50,24 @@ void make_graph_png(const char *fname)
 			fputs(item->key, dot_file);
 			fputs(" [style=filled]\n", dot_file);
 		}
-		GList *y = item->fdeps;
+		GList *y = item->rdeps;
 		while (y) {
 			FKItem *i = y->data;
 			fputc('\t', dot_file);
-			fputs(item->key, dot_file);
-			fputs(" -> ", dot_file);
 			fputs(i->key, dot_file);
+			fputs(" -> ", dot_file);
+			fputs(item->key, dot_file);
 			fputc('\n', dot_file);
+			y = y->next;
+		}
+		y = item->fdeps;
+		while (y) {
+			FKItem *i = y->data;
+			fputc('\t', dot_file);
+			fputs(i->key, dot_file);
+			fputs(" -> ", dot_file);
+			fputs(item->key, dot_file);
+			fputs(" [ style = dashed ]\n", dot_file);
 			y = y->next;
 		}
 		x = x->next;
@@ -66,9 +76,56 @@ void make_graph_png(const char *fname)
 	fputs("}\n", dot_file);
 
 	fclose(dot_file);
-	//close(pipefd[0]);
-	printf("waiting\n");
 	wait(NULL);
+}
+
+static void chti_helper(char *key, FKItem *value, gpointer user_data)
+{
+	g_assert(key);
+	g_assert(value);
+	g_assert(!user_data);
+
+	FKItem *item;
+	GList *xs;
+
+	/* For each rdep, check that the rdep has this item as an fdep */
+	GList *list = value->rdeps;
+	while (list) {
+		item = list->data;
+		xs = item->fdeps;
+		while (xs) {
+			if (xs->data == value)
+				break;
+			xs = xs->next;
+		}
+		/* If this assertion fails, an rdep of value didn't have value as an
+		 * fdep */
+		g_assert(xs);
+		list = list->next;
+	}
+
+	/* For each fdep, check that the fdep has this item as an rdep */
+	list = value->fdeps;
+	while (list) {
+		item = list->data;
+		xs = item->rdeps;
+		while (xs) {
+			if (xs->data == value)
+				break;
+			xs = xs->next;
+		}
+		/* If this assertion fails, an fdep of value didn't have value as an
+		 * rdep */
+		g_assert(xs);
+		list = list->next;
+	}
+}
+
+
+void check_hash_table_integrity()
+{
+	GHashTable *ht = fk_get_hash_table();
+	g_hash_table_foreach(ht, (GHFunc) chti_helper, NULL);
 }
 
 void test_one()
@@ -82,8 +139,11 @@ void test_one()
 	GSList *xs = NULL;
 	xs = g_slist_prepend(xs, "C");
 	fk_add_relation("A", xs);
+	check_hash_table_integrity();
 	fk_add_relation("B", xs);
+	check_hash_table_integrity();
 	fk_delete("A");
+	check_hash_table_integrity();
 	make_graph_png("one.png");
 	g_slist_free(xs);
 
@@ -127,8 +187,11 @@ void test_two()
 	GSList *xs = NULL;
 	xs = g_slist_prepend(xs, "C");
 	fk_add_relation("A", xs);
+	check_hash_table_integrity();
 	fk_add_relation("B", xs);
+	check_hash_table_integrity();
 	fk_delete("B");
+	check_hash_table_integrity();
 	make_graph_png("two.png");
 	g_slist_free(xs);
 
@@ -171,9 +234,13 @@ void test_three()
 	GSList *xs = NULL;
 	xs = g_slist_prepend(xs, "C");
 	fk_add_relation("A", xs);
+	check_hash_table_integrity();
 	fk_add_relation("B", xs);
+	check_hash_table_integrity();
 	fk_delete("C");
+	check_hash_table_integrity();
 	g_slist_free(xs);
+	make_graph_png("three.png");
 
 	GHashTable *ht = fk_get_hash_table();
 	g_assert(g_hash_table_size(ht) == 0);
@@ -209,11 +276,14 @@ int main(void)
 
 	puts("calling fk_delete(\"F\")");
 	fk_delete("F");
-	puts("calling fk_delete(\"F\")");
-	fk_delete("F");
+	//puts("calling fk_delete(\"F\")");
+	//fk_delete("F");
+
+
+	make_graph_png("test.png");
 
 	fk_finalize();
-#endif
 
 	return 0;
+#endif
 }
