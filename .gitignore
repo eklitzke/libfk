@@ -1,4 +1,4 @@
 fk
 test
 *.o
-.*.swp
+.*.sw[op]
