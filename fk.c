@@ -186,8 +186,8 @@ static void fk_delete_backward(FKItem *item)
 		fk_delete_forward(item);
 
 	if (!(item->flags & FK_FLAG_INACTIVE)) {
-		g_assert(FK_DESTROY_CALLBACK);
-		FK_DESTROY_CALLBACK((const char *) item->key);
+		if (FK_DESTROY_CALLBACK)
+			FK_DESTROY_CALLBACK((const char *) item->key);
 		g_hash_table_remove(FK_HASH, item->key);
 	} else if (!item->rdeps)
 		g_hash_table_remove(FK_HASH, item->key);

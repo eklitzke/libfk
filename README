@@ -21,18 +21,22 @@ the definition of `prefix'.
 
 Theory & Use
 ==================
-Each time an item is deleted, we should check if there is a chain of all
-inactive items. This requires that everything both downwards and upwards from
-an item is inactive.
+The intention of this library is to be used with memcached, so the semantics of
+it are similar to those of memcached.
 
-Example
--------
-TODO
+The most basic kind of operation is adding a relation. A relation consists of
+two parts: a source key, and a (possibly empty) list of destination keys. The
+interpretation of this is that the integrity of the source key depends on the
+integrity of all of the destination keys.
 
-
-     A*
-   / | \
-  /  |  \
- B   C   D
-        / \
-       E   F
+Any key in the system can be in one of two states: active or inactive. The
+primary difference between an active key and an inactive key is whether or not
+the destroy callback is called when a key is deleted. Inactive keys also have
+the property that they can only be kept alive if there is some kind of
+dependency on them. For example, say there is a dependency chain A -> B -> C,
+where A is active and B and C are inactive. The fact that A is active
+"supports" the chain. If a delete operation is done on C, it will propagate up
+to A. If A becomes inactive then the whole chain is inactive, and will
+therefore be deleted. Likewise, if there is a chain A -> B -> C where A and B
+are both active and C is inactive, if A becomes inactive it is removed (since
+it is unsupported), and the new chain becomes B -> C.

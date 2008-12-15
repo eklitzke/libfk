@@ -134,11 +134,11 @@ void check_hash_table_integrity()
 
 void test_one()
 {
-	puts("Running test_one...");
+	printf("Running test_one...");
 	/* A and B are both active and depend on C, which is inactive. After
 	 * deleting A, the graph should only contain B and C */
 
-	fk_initialize((FKDestroyCallback) destroy);
+	fk_initialize(NULL);
 
 	GSList *xs = NULL;
 	xs = g_slist_prepend(xs, "C");
@@ -179,14 +179,15 @@ void test_one()
 
 	g_list_free(ys);
 	fk_finalize();
+	puts(" passed!");
 }
 
 void test_two()
 {
-	puts("Running test_two...");
+	printf("Running test_two...");
 	/* This is the same as test_one, but B is deleted rather than A */
 
-	fk_initialize((FKDestroyCallback) destroy);
+	fk_initialize(NULL);
 
 	GSList *xs = NULL;
 	xs = g_slist_prepend(xs, "C");
@@ -227,13 +228,14 @@ void test_two()
 
 	g_list_free(ys);
 	fk_finalize();
+	puts(" passed!");
 }
 
 void test_three()
 {
-	puts("Running test_three...");
+	printf("Running test_three...");
 
-	fk_initialize((FKDestroyCallback) destroy);
+	fk_initialize(NULL);
 
 	GSList *xs = NULL;
 	xs = g_slist_prepend(xs, "C");
@@ -248,18 +250,19 @@ void test_three()
 	GHashTable *ht = fk_get_hash_table();
 	g_assert(g_hash_table_size(ht) == 0);
 	fk_finalize();
+	puts(" passed!");
 }
 
 void test_four()
 {
-	puts("Running test_four...");
+	printf("Running test_four...");
 	/* A -> B C D
 	 * D -> E F
 	 * G -> F
 	 *
 	 * Then delete F
 	 */
-	fk_initialize((FKDestroyCallback) destroy);
+	fk_initialize(NULL);
 	GSList *xs = NULL;
 	xs = g_slist_prepend(xs, "B");
 	xs = g_slist_prepend(xs, "C");
@@ -288,12 +291,13 @@ void test_four()
 	fk_delete("F");
 
 	fk_finalize();
+	puts(" passed!");
 }
 
 void test_five()
 {
 	/* Just tests fk_inactivate */
-	puts("Running test_five...");
+	printf("Running test_five...");
 	fk_initialize(NULL);
 	fk_add_relation("A", NULL);
 	check_hash_table_integrity();
@@ -318,12 +322,13 @@ void test_five()
 	g_assert(((FKItem *) g_hash_table_lookup(ht, "C"))->flags == FK_FLAG_INACTIVE);
 
 	fk_finalize();
+	puts(" passed!");
 }
 
 void test_six()
 {
 	/* Test fk_inactivate does delete_forward */
-	puts("Running test_six...");
+	printf("Running test_six...");
 	fk_initialize(NULL);
 
 	GSList *xs = NULL;
@@ -336,6 +341,58 @@ void test_six()
 	g_assert(!g_hash_table_size(ht));
 
 	fk_finalize();
+	puts(" passed!");
+}
+
+void test_seven()
+{
+	printf("Running test_seven...");
+
+	/* This is just a more complicated inactivation test */
+	fk_initialize(NULL);
+
+	GSList *xs = NULL;
+	xs = g_slist_prepend(xs, "E");
+	fk_add_relation("D", xs);
+	check_hash_table_integrity();
+
+	xs->data = "D";
+	fk_add_relation("C", xs);
+	check_hash_table_integrity();
+
+	xs->data = "C";
+	fk_add_relation("B", xs);
+	check_hash_table_integrity();
+
+	xs->data = "B";
+	fk_add_relation("A", xs);
+	check_hash_table_integrity();
+	g_slist_free(xs);
+
+	GHashTable *ht = fk_get_hash_table();
+	g_assert(g_hash_table_size(ht) == 5);
+
+	/* Now we have a chain A -> B -> C -> D -> E */
+	fk_inactivate("B");
+	fk_inactivate("C");
+	fk_inactivate("E");
+	check_hash_table_integrity();
+	g_assert(g_hash_table_size(ht) == 5);
+
+	/* If we inactivate A, the new chain should just be D -> E */
+	fk_inactivate("A");
+	check_hash_table_integrity();
+	g_assert(g_hash_table_size(ht) == 2);
+
+	FKItem *item = g_hash_table_lookup(ht, "D");
+	g_assert(item);
+	g_assert(item->flags == 0);
+	item = g_hash_table_lookup(ht, "E");
+	g_assert(item);
+	g_assert(item->flags == FK_FLAG_INACTIVE);
+
+	fk_finalize();
+	puts(" passed!");
 }
 
 int main(void)
@@ -346,5 +403,6 @@ int main(void)
 	test_four();
 	test_five();
 	test_six();
+	test_seven();
 	return 0;
 }
