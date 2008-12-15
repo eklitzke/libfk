@@ -6,7 +6,6 @@ static void destroy(const char *s)
 	printf("DESTROY(\"%s\")\n", s);
 }
 
-
 int main(void)
 {
 	/* A -> B C D

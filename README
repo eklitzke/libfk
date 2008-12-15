@@ -1,2 +1,17 @@
+Introduction
+==================
 This is a very simple C library for dealing with "foreign keys" (a term which I
 am using very loosely). It depends on glib.
+
+You can download the latest version of this software using git. The clone URL
+for this project is git://github.com/eklitzke/libfk.git
+
+Build & Install
+==================
+To compile this software you'll need to have the glib development headers and
+libraries installed. For Ubuntu/Debian, the name of that package is
+`libglib2.0-dev'. For Fedora, the name of the package is `glib2-devel'.
+
+To build everything, just run `make'. To install, run `make install'. If you
+want to change the installation prefix, you simply edit the Makefile and change
+the definition of `install'.
