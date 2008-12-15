@@ -18,4 +18,15 @@ the definition of `prefix'.
 
 Theory & Use
 ==================
+Each time an item is deleted, we should check if there is a chain of all
+inactive items. This requires that everything both downwards and upwards from
+an item is inactive.
 TODO
+
+
+     A*
+   / | \
+  /  |  \
+ B   C   D
+        / \
+       E   F
