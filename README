@@ -14,4 +14,8 @@ libraries installed. For Ubuntu/Debian, the name of that package is
 
 To build everything, just run `make'. To install, run `make install'. If you
 want to change the installation prefix, you simply edit the Makefile and change
-the definition of `install'.
+the definition of `prefix'.
+
+Theory & Use
+==================
+TODO
