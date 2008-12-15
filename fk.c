@@ -172,7 +172,7 @@ next_delete_forward:
 	}
 }
 
-static void fk_delete_item(FKItem *item)
+static void fk_delete_backward(FKItem *item)
 {
 	g_assert(item);
 	g_assert(item->key);
@@ -190,7 +190,7 @@ static void fk_delete_item(FKItem *item)
 		g_assert(it);
 		rdep = rdep->next;
 		if (!(it->flags & FK_FLAG_DELETED))
-			fk_delete_item(it);
+			fk_delete_backward(it);
 	}
 
 	/* Try deleting forward now */
@@ -210,7 +210,7 @@ void fk_delete(const gchar *name)
 {
 	FKItem *item = g_hash_table_lookup(FK_HASH, name);
 	if (item) {
-		fk_delete_item(item);
+		fk_delete_backward(item);
 		g_assert(g_hash_table_lookup(FK_HASH, name) == NULL);
 	}
 }
