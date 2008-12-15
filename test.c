@@ -24,6 +24,7 @@ void make_graph_png(const char *fname)
 		exit(EXIT_FAILURE);
 	}
 	if (cpid == 0) {
+		fk_finalize();
 		close(pipefd[1]);
 		dup2(pipefd[0], 0);
 		execlp("dot", "dot", "-Tpng", "-o", fname, (char *) NULL);
@@ -95,7 +96,6 @@ static void chti_helper(char *key, FKItem *value, gpointer user_data)
 	GList *list = value->rdeps;
 	while (list) {
 		item = list->data;
-		printf("Checking rdeps of %s\n", item->key);
 		xs = item->fdeps;
 		while (xs) {
 			if (xs->data == value)

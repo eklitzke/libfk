@@ -1,6 +1,5 @@
 #include <glib.h>
 #include <string.h>
-#include <stdio.h>
 #include "fk.h"
 
 #define FK_IS_INACTIVE(x) (x & FK_FLAG_INACTIVE)
@@ -22,7 +21,6 @@ FKDestroyCallback FK_DESTROY_CALLBACK;
 static void fk_free_key_func(char *key)
 {
 	g_assert(key);
-	//printf("fk_free_key_func(%s)\n", key);
 	g_slice_free1(strlen(key) + 1, key);
 }
 
@@ -30,7 +28,6 @@ static void fk_free_key_func(char *key)
 static void fk_free_val_func(FKItem *val)
 {
 	g_assert(val);
-	//printf("fk_free_val_func(%p)\n", val);
 
 	/* N.B. We don't free the key. The key in the FKItem will be the same as
 	 * the key that is used in hash table, so it is the responsibility of
@@ -78,7 +75,6 @@ void fk_finalize()
 void fk_add_relation(const gchar *name, GSList *deps)
 {
 	g_assert(name);
-	printf("Adding relation %s\n", name);
 
 	gboolean is_new = FALSE;
 	FKItem *item = g_hash_table_lookup(FK_HASH, name);
@@ -89,7 +85,6 @@ void fk_add_relation(const gchar *name, GSList *deps)
 		item->flags = 0;
 		item->fdeps = NULL;
 		item->rdeps = NULL;
-		//printf("inserting to ht %s\n", item->key);
 		g_hash_table_insert(FK_HASH, (gpointer) item->key, item);
 	} else {
 		item->flags &= ~FK_FLAG_INACTIVE;
@@ -107,7 +102,6 @@ void fk_add_relation(const gchar *name, GSList *deps)
 			dep_item->flags = FK_FLAG_INACTIVE;
 			dep_item->fdeps = NULL;
 			dep_item->rdeps = NULL;
-			//printf("inserting to ht %s\n", dep_item->key);
 			g_hash_table_insert(FK_HASH, (gpointer) dep_item->key, dep_item);
 		}
 
@@ -156,26 +150,16 @@ static void fk_delete_forward(FKItem *item)
 {
 	g_assert(item);
 	GList *fdeps = item->fdeps;
-	printf("fk_delete_forward(\"%s\")\n", item->key);
 	while (fdeps) {
 
 		FKItem *it = fdeps->data;
-		printf("Trying forward delete %s -> %s\n", item->key, it->key);
 
 		GList *x = g_list_find(it->rdeps, (gconstpointer) item);
 		g_assert(x);
 		it->rdeps = g_list_delete_link(it->rdeps, x);
-		if (it->rdeps) {
-			FKItem *i = it->rdeps->data;
-			printf("it->rdeps head = %s\n", i->key);
-		}
 
-		if (it->flags & FK_FLAG_DELETED) {
-			printf("Skipping forward delete of %s (from %s); already deleted\n", it->key, item->key);
+		if (it->flags & FK_FLAG_DELETED)
 			goto next_delete_forward;
-		}
-		printf("Not skipping forward delete of %s (from %s)\n", it->key, item->key);
-
 
 		if (!it->rdeps && FK_IS_INACTIVE(it->flags)) {
 			it->flags &= FK_FLAG_DELETED;
@@ -190,7 +174,6 @@ next_delete_forward:
 
 static void fk_delete_item(FKItem *item)
 {
-	printf("fk_delete_item(\"%s\")\n", item->key);
 	g_assert(item);
 	g_assert(item->key);
 	g_assert(!(item->flags & FK_FLAG_DELETED));
@@ -201,12 +184,10 @@ static void fk_delete_item(FKItem *item)
 
 	FKItem *it;
 
-
 	GList *rdep = item->rdeps;
 	while (rdep) {
 		it = rdep->data;
 		g_assert(it);
-		printf("Moving up in fk_delete_item to %s (rdep of %s)\n", it->key, item->key);
 		rdep = rdep->next;
 		if (!(it->flags & FK_FLAG_DELETED))
 			fk_delete_item(it);
@@ -230,8 +211,7 @@ void fk_delete(const gchar *name)
 	FKItem *item = g_hash_table_lookup(FK_HASH, name);
 	if (item) {
 		fk_delete_item(item);
-	} else {
-		fprintf(stderr, "fk_delete: no item found for \"%s\"\n", name);
+		g_assert(g_hash_table_lookup(FK_HASH, name) == NULL);
 	}
 }
 
@@ -246,4 +226,4 @@ GHashTable* fk_get_hash_table()
 }
 #endif
 
-/* vim: noet */
+// vim: noet
