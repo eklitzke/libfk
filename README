@@ -12,6 +12,9 @@ To compile this software you'll need to have the glib development headers and
 libraries installed. For Ubuntu/Debian, the name of that package is
 `libglib2.0-dev'. For Fedora, the name of the package is `glib2-devel'.
 
+To run the unit tests, you will need GraphViz installed (but it is not
+necessary to have GraphViz installed in order to use the library).
+
 To build everything, just run `make'. To install, run `make install'. If you
 want to change the installation prefix, you simply edit the Makefile and change
 the definition of `prefix'.
@@ -21,6 +24,9 @@ Theory & Use
 Each time an item is deleted, we should check if there is a chain of all
 inactive items. This requires that everything both downwards and upwards from
 an item is inactive.
+
+Example
+-------
 TODO
 
 
