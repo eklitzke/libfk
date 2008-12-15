@@ -6,7 +6,7 @@
 
 void destroy(const char *s)
 {
-	printf("DESTROY(\"%s\")\n", s);
+	printf("DESTROY \"%s\"\n", s);
 }
 
 void make_graph_png(const char *fname)
@@ -290,6 +290,22 @@ void test_four()
 	fk_finalize();
 }
 
+void test_five()
+{
+	/* Just tests fk_inactivate */
+	puts("Running test_five...");
+	fk_initialize(NULL);
+	fk_add_relation("A", NULL);
+	check_hash_table_integrity();
+	fk_inactivate("A");
+	check_hash_table_integrity();
+
+	GHashTable *ht = fk_get_hash_table();
+	FKItem *item = g_hash_table_lookup(ht, "A");
+	g_assert(item->flags == FK_FLAG_INACTIVE);
+	fk_finalize();
+}
+
 
 int main(void)
 {
@@ -297,5 +313,6 @@ int main(void)
 	test_two();
 	test_three();
 	test_four();
+	test_five();
 	return 0;
 }

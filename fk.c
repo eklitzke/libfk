@@ -44,8 +44,6 @@ static void fk_free_val_func(FKItem *val)
 void fk_initialize(FKDestroyCallback cb)
 {
 	g_assert(!FK_HASH);
-	g_assert(!FK_DESTROY_CALLBACK);
-	g_assert(cb);
 
 	FK_DESTROY_CALLBACK = cb;
 	FK_HASH = g_hash_table_new_full(
@@ -53,7 +51,6 @@ void fk_initialize(FKDestroyCallback cb)
 			(GDestroyNotify) fk_free_val_func);
 
 	g_assert(FK_HASH);
-	g_assert(FK_DESTROY_CALLBACK);
 }
 
 /* Finalize (tear down) the library. After this function is called, all memory
@@ -61,7 +58,6 @@ void fk_initialize(FKDestroyCallback cb)
 void fk_finalize()
 {
 	g_assert(FK_HASH);
-	g_assert(FK_DESTROY_CALLBACK);
 
 	g_hash_table_unref(FK_HASH);
 	FK_HASH = NULL;
