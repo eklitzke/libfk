@@ -3,3 +3,4 @@ test
 *.o
 *.png
 .*.sw[op]
+protocol.txt

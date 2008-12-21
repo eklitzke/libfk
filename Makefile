@@ -14,6 +14,7 @@ fk.o: fk.c fk.h
 test: test.c fk.o
 	gcc -g -O0 $(GLIB_CFLAGS) $(GLIB_LIBS) -o test test.c fk.o
 	./test
+	-rm -f *.png
 
 install: all
 	install -m 644 fk.o $(bindir)/fk.o

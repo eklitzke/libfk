@@ -46,3 +46,18 @@ it is unsupported), and the new chain becomes B -> C.
 
 The other two main operations supported by the library are marking a key as
 inactive, and deleting a key.
+
+Memcached Extensions
+===========================
+Normally a memcached storage command looks like this:
+<command name> <key> <flags> <exptime> <bytes> [noreply]\r\n
+
+This is extended to look like this:
+<command name> <keys> ENDKEYS <flags> <exptime> <bytes> [noreply]\r\n
+
+Keys are separated by spaces (this is permissible because memcached forbids
+whitespace from appearing in keys). There must be at least one key. The first
+key is interpreted as the key that the storage command is for, i.e. in the
+usual context that a key is interpreted in in memcached. All of the normal
+rules for keys apply, except that there is one additional rule: no key may be
+named "ENDKEYS", since that could lead to ambiguity.
