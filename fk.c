@@ -214,6 +214,7 @@ void fk_inactivate(const gchar *name)
 			fk_delete_forward(item);
 			g_hash_table_remove(FK_HASH, name);
 		}
+		/* TODO trye to delete back if all rdeps are inactive */
 	}
 }
 

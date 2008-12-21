@@ -378,6 +378,7 @@ void test_seven()
 	fk_inactivate("E");
 	check_hash_table_integrity();
 	g_assert(g_hash_table_size(ht) == 5);
+	make_graph_png("seven.png");
 
 	/* If we inactivate A, the new chain should just be D -> E */
 	fk_inactivate("A");
@@ -395,6 +396,45 @@ void test_seven()
 	puts(" passed!");
 }
 
+void test_eight()
+{
+	printf("Running test_eight...");
+
+	/* A -> B. Set A inactive, then B */
+	fk_initialize(NULL);
+
+	GSList *xs = NULL;
+	xs = g_slist_prepend(xs, "B");
+	fk_add_relation("A", xs);
+	g_slist_free(xs);
+	fk_add_relation("B", NULL);
+	check_hash_table_integrity();
+
+	GHashTable *ht = fk_get_hash_table();
+	g_assert(g_hash_table_size(ht) == 2);
+	FKItem *item = g_hash_table_lookup(ht, "A");
+	g_assert(item->flags == 0);
+	g_assert(item->fdeps);
+	g_assert(!item->rdeps);
+	item = g_hash_table_lookup(ht, "B");
+	g_assert(item->flags == 0);
+
+	fk_inactivate("A");
+
+	g_assert(g_hash_table_size(ht) == 1);
+	check_hash_table_integrity();
+	item = g_hash_table_lookup(ht, "A");
+	g_assert(!item);
+	item = g_hash_table_lookup(ht, "B");
+	g_assert(item->flags == 0);
+	fk_inactivate("B");
+
+	g_assert(g_hash_table_size(ht) == 0);
+
+	fk_finalize();
+	puts(" passed!");
+}
+
 int main(void)
 {
 	test_one();
@@ -404,5 +444,6 @@ int main(void)
 	test_five();
 	test_six();
 	test_seven();
+	test_eight();
 	return 0;
 }

@@ -21,8 +21,11 @@ the definition of `prefix'.
 
 Theory & Use
 ==================
-The intention of this library is to be used with memcached, so the semantics of
-it are similar to those of memcached.
+This library is used to keep track of relations between keys, and to provide
+cascading operations on deletes by invoking a special destroy callback that is
+registered when the library is initialized. The intention of this library is to
+be used with memcached, so the semantics of it are similar to those of
+memcached.
 
 The most basic kind of operation is adding a relation. A relation consists of
 two parts: a source key, and a (possibly empty) list of destination keys. The
@@ -40,3 +43,6 @@ to A. If A becomes inactive then the whole chain is inactive, and will
 therefore be deleted. Likewise, if there is a chain A -> B -> C where A and B
 are both active and C is inactive, if A becomes inactive it is removed (since
 it is unsupported), and the new chain becomes B -> C.
+
+The other two main operations supported by the library are marking a key as
+inactive, and deleting a key.
