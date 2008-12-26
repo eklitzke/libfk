@@ -16,10 +16,13 @@ test: test.c fk.o
 	./test
 	-rm -f *.png
 
+ctags:
+	find . -name '*.[ch]' | ctags -L -
+
 install: all
 	install -m 644 fk.o $(bindir)/fk.o
 
 clean:
 	-rm -f fk test *.o *.png
 
-.PHONY: all clean
+.PHONY: all clean ctags
