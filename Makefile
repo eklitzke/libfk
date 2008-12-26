@@ -12,7 +12,7 @@ fk.o: fk.c fk.h
 	gcc -c -g -O0 $(UNIT_TEST) $(GLIB_CFLAGS) $(GLIB_LIBS) fk.c
 
 test: test.c fk.o
-	gcc -g -O0 $(GLIB_CFLAGS) $(GLIB_LIBS) -o test test.c fk.o
+	gcc -g -O0 $(UNIT_TEST) $(GLIB_CFLAGS) $(GLIB_LIBS) -o test test.c fk.o
 	./test
 	-rm -f *.png
 
