@@ -1,6 +1,7 @@
 fk
 test
 *.o
+*.so
 *.png
 .*.sw[op]
 protocol.txt

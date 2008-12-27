@@ -16,6 +16,9 @@ test: test.c fk.o
 	./test
 	-rm -f *.png
 
+fk.so: fk.c fk.h
+	gcc -shared -fPIC -o fk.so $(GLIB_CFLAGS) $(GLIB_LIBS) fk.c
+
 ctags:
 	find . -name '*.[ch]' | ctags -L -
 
