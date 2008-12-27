@@ -6,3 +6,4 @@ test
 .*.sw[op]
 protocol.txt
 tags
+libfk.pc
