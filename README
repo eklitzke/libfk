@@ -53,11 +53,21 @@ Normally a memcached storage command looks like this:
 <command name> <key> <flags> <exptime> <bytes> [noreply]\r\n
 
 This is extended to look like this:
-<command name> <keys> ENDKEYS <flags> <exptime> <bytes> [noreply]\r\n
+<command name> <keys> __ENDKEYS <flags> <exptime> <bytes> [noreply]\r\n
 
 Keys are separated by spaces (this is permissible because memcached forbids
 whitespace from appearing in keys). There must be at least one key. The first
 key is interpreted as the key that the storage command is for, i.e. in the
 usual context that a key is interpreted in in memcached. All of the normal
 rules for keys apply, except that there is one additional rule: no key may be
-named "ENDKEYS", since that could lead to ambiguity.
+named "__ENDKEYS", since that could lead to ambiguity.
+
+Because of the protocol change, you need to use a modified client that knows
+the new protocol.
+
+The dependency graph is stored by libfk, not memcached. This means that the
+memory is allocated and released by GLib, not memcached. Memcached could
+potentially use a lot more memory than you tell it to use, because the memory
+used to store the dependency graph is not taken from the slab allocator. Of
+course, the dependency data is fairly compact, so this probably won't be a big
+issue for most uses.
